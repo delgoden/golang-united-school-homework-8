@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -35,6 +36,10 @@ func List(fileName string) (string, error) {
 		return "", err
 	}
 
+	if len(data) == 0 {
+		return "", errors.New("file is empty")
+	}
+
 	return string(data), nil
 
 }
@@ -50,20 +55,19 @@ func Add(item string, fileName string, writer io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if len(itemsInFile) != 0 {
-		err = json.Unmarshal([]byte(itemsInFile), &users)
-		if err != nil {
-			return err
-		}
 
-		for _, user := range users {
-			if user.Id == userItem.Id {
-				_, err = fmt.Fprintf(writer, itemAlreadyExists, userItem.Id)
-				if err != nil {
-					return err
-				}
-				return nil
+	err = json.Unmarshal([]byte(itemsInFile), &users)
+	if err != nil {
+		return err
+	}
+
+	for _, user := range users {
+		if user.Id == userItem.Id {
+			_, err = fmt.Fprintf(writer, itemAlreadyExists, userItem.Id)
+			if err != nil {
+				return err
 			}
+			return nil
 		}
 	}
 
@@ -95,28 +99,27 @@ func FindById(id string, fileName string, writer io.Writer) (err error) {
 	}
 	var users []user
 
-	if len(itemsInFile) != 0 {
-		err = json.Unmarshal([]byte(itemsInFile), &users)
-		if err != nil {
-			return err
+	err = json.Unmarshal([]byte(itemsInFile), &users)
+	if err != nil {
+		return err
+	}
+
+	for i, user := range users {
+		if user.Id == id {
+			itemFind = user
+
+			break
 		}
 
-		for i, user := range users {
-			if user.Id == id {
-				itemFind = user
-
-				break
-			}
-
-			if i == len(users)-1 {
-				_, err = fmt.Fprint(writer, "")
-				if err != nil {
-					return
-				}
+		if i == len(users)-1 {
+			_, err = fmt.Fprint(writer, "")
+			if err != nil {
 				return
 			}
+			return
 		}
 	}
+
 	data, err := json.Marshal(itemFind)
 	if err != nil {
 		return
@@ -134,23 +137,22 @@ func Remove(id string, fileName string, writer io.Writer) (err error) {
 		return err
 	}
 	var users []user
-	if len(itemsInFile) != 0 {
-		err = json.Unmarshal([]byte(itemsInFile), &users)
-		if err != nil {
-			return err
+
+	err = json.Unmarshal([]byte(itemsInFile), &users)
+	if err != nil {
+		return err
+	}
+
+	for i, user := range users {
+		if user.Id == id {
+			users = append(users[:i], users[i+1:]...)
+			break
 		}
 
-		for i, user := range users {
-			if user.Id == id {
-				users = append(users[:i], users[i+1:]...)
-				break
-			}
-
-			if i == len(users)-1 {
-				_, err = fmt.Fprintf(writer, userNotFound, id)
-				if err != nil {
-					return
-				}
+		if i == len(users)-1 {
+			_, err = fmt.Fprintf(writer, userNotFound, id)
+			if err != nil {
+				return
 			}
 		}
 	}
